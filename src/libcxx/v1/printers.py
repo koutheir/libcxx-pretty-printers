@@ -566,7 +566,7 @@ class StdMapPrinter:
         def next(self):
             item = self.rbiter.next()
             item = item.dereference()['__value_']
-            result = ('[%d] %s' % (self.count, str(item['first'])), item['second'])
+            result = ('[%d] %s' % (self.count, str(item['__cc']['first'])), item['__cc']['second'])
             self.count += 1
             return result
         
@@ -595,8 +595,8 @@ class StdMapIteratorPrinter:
         self.val = val
 
     def to_string (self):
-        return '[%s] %s' % (self.val['__i_']['__ptr_']['__value_']['first'],
-                            self.val['__i_']['__ptr_']['__value_']['second'])
+        return '[%s] %s' % (self.val['__i_']['__ptr_']['__value_']['__cc']['first'],
+                            self.val['__i_']['__ptr_']['__value_']['__cc']['second'])
 
 class HashtableIterator:
     def __init__ (self, hashtable):
