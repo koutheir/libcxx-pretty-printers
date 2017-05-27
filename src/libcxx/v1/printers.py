@@ -15,9 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import gdb
-import itertools
 import re
+import gdb
 
 # Try to use the new-style pretty-printing if available.
 _use_gdb_pp = True
@@ -51,7 +50,7 @@ def find_type(orig, name):
         # anything fancier here.
         field = typ.fields()[0]
         if not field.is_base_class:
-            raise ValueError, "Cannot find type %s::%s" % (str(orig), name)
+            raise ValueError("Cannot find type %s::%s" % (orig, name))
         typ = field.type
 
 class StdStringPrinter:
@@ -69,27 +68,27 @@ class StdStringPrinter:
 
         ss = self.val['__r_']['__first_']['__s']
         __short_mask = 0x1
-        if ((ss['__size_'] & __short_mask) == 0):
+        if (ss['__size_'] & __short_mask) == 0:
             len = (ss['__size_'] >> 1)
             ptr = ss['__data_']
         else:
             sl = self.val['__r_']['__first_']['__l']
             len = sl['__size_']
             ptr = sl['__data_']
-        
-        return ptr.string(length = len)
 
-    def display_hint (self):
+        return ptr.string(length=len)
+
+    def display_hint(self):
         return 'string'
 
 class SharedPointerPrinter:
     "Print a shared_ptr or weak_ptr"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.typename = typename
         self.val = val
 
-    def to_string (self):
+    def to_string(self):
         state = 'empty'
         refcounts = self.val['__cntrl_']
         if refcounts != 0:
@@ -99,33 +98,34 @@ class SharedPointerPrinter:
                 state = 'expired, weak %d' % weakcount
             else:
                 state = 'count %d, weak %d' % (usecount, weakcount)
-                
+
         return '%s (%s) = %s => %s' % (self.typename, state, self.val['__ptr_'], self.val['__ptr_'].dereference())
 
 class UniquePointerPrinter:
     "Print a unique_ptr"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.typename = typename
         self.val = val
 
-    def to_string (self):
+    def to_string(self):
         v = self.val['__ptr_']['__first_']
-        return ('%s<%s> = %s => %s' % (str(self.typename), str(v.type.target()), str(v), v.dereference()))
+        return '%s<%s> = %s => %s' % (str(self.typename), str(v.type.target()), str(v), v.dereference())
 
 class StdPairPrinter:
     "Print a std::pair"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.typename = typename
-        self.val = val;
-        
-    def children (self):
-		return [('first', self.val['first']), ('second', self.val['second'])]
+        self.val = val
 
-    def to_string (self):
+    def children(self):
+        return [('first', self.val['first']),
+                ('second', self.val['second'])]
+
+    def to_string(self):
         return 'pair'
-    
+
 #    def display_hint(self):
 #        return 'array'
 
@@ -133,33 +133,33 @@ class StdTuplePrinter:
     "Print a std::tuple"
 
     class _iterator:
-        def __init__ (self, head):
+        def __init__(self, head):
             self.head = head['base_']
             self.fields = self.head.type.fields()
             self.count = 0
-        
-        def __iter__ (self):
+
+        def __iter__(self):
             return self
-        
-        def next (self):
+
+        def __next__(self):
             if self.count >= len(self.fields):
                 raise StopIteration
-            self.field = self.head.cast(self.fields[self.count].type)['value']
+            field = self.head.cast(self.fields[self.count].type)['value']
             self.count += 1
-            return ('[%d]' % (self.count - 1), self.field)
-        
-    def __init__ (self, typename, val):
-        self.typename = typename
-        self.val = val;
-        
-    def children (self):
-        return self._iterator (self.val)
+            return ('[%d]' % (self.count - 1), field)
 
-    def to_string (self):
-        if len (self.val.type.fields ()) == 0:
+    def __init__(self, typename, val):
+        self.typename = typename
+        self.val = val
+
+    def children(self):
+        return self._iterator(self.val)
+
+    def to_string(self):
+        if len(self.val.type.fields()) == 0:
             return 'empty %s' % (self.typename)
         return 'tuple'
-    
+
 #    def display_hint(self):
 #        return 'array'
 
@@ -176,7 +176,7 @@ class StdListPrinter:
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             if self.base == self.head:
                 raise StopIteration
             elt = self.base.cast(self.nodetype).dereference()
@@ -198,7 +198,7 @@ class StdListPrinter:
         if self.val['__end_']['__next_'] == self.val['__end_'].address:
             return 'empty %s' % (self.typename)
         return '%s' % (self.typename)
-	
+
 #    def display_hint(self):
 #        return 'array'
 
@@ -223,10 +223,10 @@ class StdForwardListPrinter:
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             if self.node == 0:
                 raise StopIteration
-            
+
             result = ('[%d]' % self.count, self.node['__value_'])
             self.count += 1
             self.node = self.node['__next_']
@@ -249,12 +249,12 @@ class StdVectorPrinter:
     "Print a std::vector"
 
     class _iterator:
-        def __init__ (self, start, finish_or_size, bits_per_word, bitvec):
+        def __init__(self, start, finish_or_size, bits_per_word, bitvec):
             self.bitvec = bitvec
             if bitvec:
-                self.item   = start
-                self.so     = 0
-                self.size   = finish_or_size
+                self.item = start
+                self.so = 0
+                self.size = finish_or_size
                 self.bits_per_word = bits_per_word
             else:
                 self.item = start
@@ -264,7 +264,7 @@ class StdVectorPrinter:
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             count = self.count
             self.count = self.count + 1
             if self.bitvec:
@@ -294,28 +294,28 @@ class StdVectorPrinter:
         for f in val.type.fields():
             if f.name == '__bits_per_word':
                 self.is_bool = 1
- 
+
     def children(self):
         if self.is_bool:
             return self._iterator(self.val['__begin_'],
-                              self.val['__size_'],
-                              self.val['__bits_per_word'],
-                              self.is_bool)
+                                  self.val['__size_'],
+                                  self.val['__bits_per_word'],
+                                  self.is_bool)
         else:
             return self._iterator(self.val['__begin_'],
-                              self.val['__end_'],
-                              0,
-                              self.is_bool)
+                                  self.val['__end_'],
+                                  0,
+                                  self.is_bool)
 
     def to_string(self):
         start = self.val['__begin_']
         if self.is_bool:
-            length   = self.val['__size_']
+            length = self.val['__size_']
             capacity = self.val['__cap_alloc_']['__first_'] * self.val['__bits_per_word']
             if length == 0:
                 return 'empty %s<bool> (capacity=%d)' % (self.typename, int(capacity))
             else:
-                return ('%s<bool> (length=%d, capacity=%d)' % (self.typename, int(length), int(capacity)))
+                return '%s<bool> (length=%d, capacity=%d)' % (self.typename, int(length), int(capacity))
         else:
             finish = self.val['__end_']
             end = self.val['__end_cap_']['__first_']
@@ -324,7 +324,7 @@ class StdVectorPrinter:
             if length == 0:
                 return 'empty %s (capacity=%d)' % (self.typename, int(capacity))
             else:
-                return ('%s (length=%d, capacity=%d)' % (self.typename, int(length), int(capacity)))
+                return '%s (length=%d, capacity=%d)' % (self.typename, int(length), int(capacity))
 
 #    def display_hint(self):
 #        return 'array'
@@ -336,7 +336,7 @@ class StdVectorIteratorPrinter:
         self.val = val
 
     def to_string(self):
-        return self.val['__i'].dereference();
+        return self.val['__i'].dereference()
 
 class StdVectorBoolIteratorPrinter:
     "Print std::vector<bool>::iterator"
@@ -368,22 +368,22 @@ class StdDequePrinter:
             else:
                 self.p = self.mp.dereference() + start % block_size
                 self.end_p = self.end_mp.dereference() + self.end_p % block_size
-            
+
         def __iter__(self):
             return self
 
-        def next(self):
+        def __next__(self):
             old_p = self.p
-            
+
             self.count += 1
-            self.p += 1;
+            self.p += 1
             if (self.p - self.mp.dereference()) == self.block_size:
                 self.mp += 1
                 self.p = self.mp.dereference()
-                
+
             if (self.mp > self.end_mp) or ((self.p > self.end_p) and (self.mp == self.end_mp)):
                 raise StopIteration
-                
+
             return ('[%d]' % int(self.count - 1), old_p.dereference())
 
     def __init__(self, typename, val):
@@ -402,7 +402,7 @@ class StdDequePrinter:
         return self._iterator(self.size, self.val['__block_size'],
                               self.val['__start_'], block_map['__begin_'],
                               block_map['__end_'])
-    
+
 #    def display_hint (self):
 #        return 'array'
 
@@ -418,19 +418,19 @@ class StdDequeIteratorPrinter:
 class StdStackOrQueuePrinter:
     "Print a std::stack or std::queue"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.typename = typename
         self.visualizer = gdb.default_visualizer(val['c'])
 
-    def children (self):
+    def children(self):
         return self.visualizer.children()
 
-    def to_string (self):
+    def to_string(self):
         return '%s = %s' % (self.typename, self.visualizer.to_string())
 
-    def display_hint (self):
-        if hasattr (self.visualizer, 'display_hint'):
-            return self.visualizer.display_hint ()
+    def display_hint(self):
+        if hasattr(self.visualizer, 'display_hint'):
+            return self.visualizer.display_hint()
         return None
 
 class StdBitsetPrinter:
@@ -441,16 +441,16 @@ class StdBitsetPrinter:
         self.val = val
         self.bit_count = val.type.template_argument(0)
 
-    def to_string (self):
+    def to_string(self):
         return '%s (length=%d)' % (self.typename, self.bit_count)
 
-    def children (self):
+    def children(self):
         words = self.val['__first_']
         words_count = self.val['__n_words']
         bits_per_word = self.val['__bits_per_word']
         word_index = 0
         result = []
-        
+
         while word_index < words_count:
             bit_index = 0
             word = words[word_index]
@@ -460,7 +460,7 @@ class StdBitsetPrinter:
                 word >>= 1
                 bit_index += 1
             word_index += 1
-        
+
         return result
 
 class StdSetPrinter:
@@ -474,32 +474,32 @@ class StdSetPrinter:
 
         def __iter__(self):
             return self
-        
+
         def __len__(self):
             return len(self.rbiter)
 
-        def next(self):
-            item = self.rbiter.next()
+        def __next__(self):
+            item = self.rbiter.__next__()
             item = item.dereference()['__value_']
             result = (('[%d]' % self.count), item)
             self.count += 1
             return result
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.typename = typename
         self.val = val
         self.rbiter = RbtreeIterator(self.val['__tree_'])
 
-    def to_string (self):
+    def to_string(self):
         length = len(self.rbiter)
         if length == 0:
             return 'empty %s' % self.typename
         else:
             return '%s (count=%d)' % (self.typename, int(length))
 
-    def children (self):
+    def children(self):
         return self._iterator(self.rbiter)
-    
+
 #    def display_hint (self):
 #        return 'set'
 
@@ -507,24 +507,24 @@ class RbtreeIterator:
     def __init__(self, rbtree):
         self.node = rbtree['__begin_node_']
         self.size = rbtree['__pair3_']['__first_']
-        self.node_type = self.node.type
+        self.node_pointer_type = gdb.lookup_type(rbtree.type.strip_typedefs().name + '::__node_pointer')
         self.count = 0
 
     def __iter__(self):
         return self
 
     def __len__(self):
-        return int (self.size)
+        return int(self.size)
 
-    def next(self):
+    def __next__(self):
         if self.count == self.size:
             raise StopIteration
-        
-        result = self.node
+
+        node = self.node.cast(self.node_pointer_type)
+        result = node
         self.count += 1
         if self.count < self.size:
             # Compute the next node.
-            node = self.node
             if node.dereference()['__right_']:
                 node = node.dereference()['__right_']
                 while node.dereference()['__left_']:
@@ -535,17 +535,17 @@ class RbtreeIterator:
                     node = parent_node
                     parent_node = parent_node.dereference()['__parent_']
                 node = parent_node
-                
-            self.node = node.cast(self.node_type)
+
+            self.node = node
         return result
 
 class StdRbtreeIteratorPrinter:
     "Print std::set::iterator"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.val = val
 
-    def to_string (self):
+    def to_string(self):
         return self.val['__ptr_']['__value_']
 
 class StdMapPrinter:
@@ -559,30 +559,30 @@ class StdMapPrinter:
 
         def __iter__(self):
             return self
-        
+
         def __len__(self):
             return len(self.rbiter)
 
-        def next(self):
-            item = self.rbiter.next()
+        def __next__(self):
+            item = self.rbiter.__next__()
             item = item.dereference()['__value_']
             result = ('[%d] %s' % (self.count, str(item['__cc']['first'])), item['__cc']['second'])
             self.count += 1
             return result
-        
-    def __init__ (self, typename, val):
+
+    def __init__(self, typename, val):
         self.typename = typename
         self.val = val
         self.rbiter = RbtreeIterator(val['__tree_'])
 
-    def to_string (self):
+    def to_string(self):
         length = len(self.rbiter)
         if length == 0:
             return 'empty %s' % self.typename
         else:
             return '%s (count=%d)' % (self.typename, int(length))
 
-    def children (self):
+    def children(self):
         return self._iterator(self.rbiter)
 
 #    def display_hint (self):
@@ -591,99 +591,104 @@ class StdMapPrinter:
 class StdMapIteratorPrinter:
     "Print std::map::iterator"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.val = val
 
-    def to_string (self):
+    def to_string(self):
         return '[%s] %s' % (self.val['__i_']['__ptr_']['__value_']['__cc']['first'],
                             self.val['__i_']['__ptr_']['__value_']['__cc']['second'])
 
 class HashtableIterator:
-    def __init__ (self, hashtable):
+    def __init__(self, hashtable):
         self.node = hashtable['__p1_']['__first_']['__next_']
         self.size = hashtable['__p2_']['__first_']
-
-    def __iter__ (self):
+    def __iter__(self):
         return self
-    
+
     def __len__(self):
         return self.size
 
-    def next (self):
+    def __next__(self):
         if self.node == 0:
             raise StopIteration
-        
-        node = self.node.dereference()
-        result = node['__value_']
+        hash_node_type = gdb.lookup_type(
+            self.node.dereference().type.name + '::__node_pointer')
+        node = self.node.cast(hash_node_type).dereference()
         self.node = node['__next_']
-        return result
+        value = node['__value_']
+        try:
+            # unordered_map's value is a union of __nc and __cc.
+            value = value['__nc']
+        except gdb.error:
+            pass
+        return value
 
 class StdHashtableIteratorPrinter:
     "Print std::unordered_set::iterator"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.val = val
 
-    def to_string (self):
+    def to_string(self):
         return self.val['__node_']['__value_']
 
 class StdUnorderedMapIteratorPrinter:
     "Print std::unordered_map::iterator"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.val = val
 
-    def to_string (self):
+    def to_string(self):
         return '[%s] %s' % (self.val['__i_']['__node_']['__value_']['first'],
                             self.val['__i_']['__node_']['__value_']['second'])
 
 class UnorderedSetPrinter:
     "Print a std::unordered_set"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.typename = typename
         self.val = val
         self.hashtable = val['__table_']
         self.size = self.hashtable['__p2_']['__first_']
         self.hashtableiter = HashtableIterator(self.hashtable)
 
-    def hashtable (self):
+    def hashtable(self):
         return self.hashtable
 
-    def to_string (self):
+    def to_string(self):
         if self.size == 0:
             return 'empty %s' % self.typename
         else:
             return '%s (count=%d)' % (self.typename, self.size)
 
-    @staticmethod
-    def format_count (i):
-        return '[%d]' % i
-
-    def children (self):
-        counter = itertools.imap (self.format_count, itertools.count())
-        return itertools.izip (counter, self.hashtableiter)
+    def children(self):
+        result = []
+        count = 0
+        for elt in self.hashtableiter:
+            result.append(('[%d]' % count, str(elt)))
+            count += 1
+        return result
 
 class UnorderedMapPrinter:
     "Print a std::unordered_map"
 
-    def __init__ (self, typename, val):
+    def __init__(self, typename, val):
         self.typename = typename
         self.val = val
         self.hashtable = val['__table_']
         self.size = self.hashtable['__p2_']['__first_']
         self.hashtableiter = HashtableIterator(self.hashtable)
 
-    def hashtable (self):
+    def hashtable(self):
         return self.hashtable
 
-    def to_string (self):
+    def to_string(self):
         if self.size == 0:
             return 'empty %s' % self.typename
         else:
             return '%s (count=%d)' % (self.typename, self.size)
 
-    def children (self):
+    def children(self):
         result = []
         count = 0
         for elt in self.hashtableiter:
@@ -723,7 +728,7 @@ class Printer(object):
         # A small sanity check.
         # FIXME
         if not self.compiled_rx.match(name + '<>'):
-            raise ValueError, 'libstdc++ programming error: "%s" does not match' % name
+            raise ValueError('libstdc++ programming error: "%s" does not match' % name)
         printer = RxPrinter(name, function)
         self.subprinters.append(printer)
         self.lookup[name] = printer
@@ -742,10 +747,10 @@ class Printer(object):
     def get_basic_type(type):
         # If it points to a reference, get the reference.
         if type.code == gdb.TYPE_CODE_REF:
-            type = type.target ()
+            type = type.target()
 
         # Get the unqualified type, stripped of typedefs.
-        type = type.unqualified ().strip_typedefs ()
+        type = type.unqualified().strip_typedefs()
 
         return type.tag
 
@@ -819,11 +824,11 @@ def register_type_printers(obj):
         add_one_type_printer(obj, 'basic_iostream', pfx + 'iostream')
         add_one_type_printer(obj, 'basic_stringbuf', pfx + 'stringbuf')
         add_one_type_printer(obj, 'basic_istringstream',
-                                 pfx + 'istringstream')
+                             pfx + 'istringstream')
         add_one_type_printer(obj, 'basic_ostringstream',
-                                 pfx + 'ostringstream')
+                             pfx + 'ostringstream')
         add_one_type_printer(obj, 'basic_stringstream',
-                                 pfx + 'stringstream')
+                             pfx + 'stringstream')
         add_one_type_printer(obj, 'basic_filebuf', pfx + 'filebuf')
         add_one_type_printer(obj, 'basic_ifstream', pfx + 'ifstream')
         add_one_type_printer(obj, 'basic_ofstream', pfx + 'ofstream')
@@ -836,9 +841,9 @@ def register_type_printers(obj):
         add_one_type_printer(obj, 'regex_iterator', pfx + 'cregex_iterator')
         add_one_type_printer(obj, 'regex_iterator', pfx + 'sregex_iterator')
         add_one_type_printer(obj, 'regex_token_iterator',
-                                 pfx + 'cregex_token_iterator')
+                             pfx + 'cregex_token_iterator')
         add_one_type_printer(obj, 'regex_token_iterator',
-                                 pfx + 'sregex_token_iterator')
+                             pfx + 'sregex_token_iterator')
 
     # Note that we can't have a printer for std::wstreampos, because
     # it shares the same underlying type as std::streampos.
@@ -860,7 +865,7 @@ def register_type_printers(obj):
     add_one_type_printer(obj, 'discard_block_engine', 'ranlux48')
     add_one_type_printer(obj, 'shuffle_order_engine', 'knuth_b')
 
-def register_libcxx_printers (obj):
+def register_libcxx_printers(obj):
     "Register libc++ pretty-printers with objfile Obj."
 
     global _use_gdb_pp
@@ -875,7 +880,7 @@ def register_libcxx_printers (obj):
 
     register_type_printers(obj)
 
-def build_libcxx_dictionary ():
+def build_libcxx_dictionary():
     global libcxx_printer
 
     libcxx_printer = Printer("libc++-v1")
@@ -896,7 +901,7 @@ def build_libcxx_dictionary ():
     libcxx_printer.add_container('std::', 'multimap', StdMapPrinter)
     libcxx_printer.add_container('std::', 'multiset', StdSetPrinter)
     libcxx_printer.add_version('std::', 'priority_queue',
-                                  StdStackOrQueuePrinter)
+                               StdStackOrQueuePrinter)
     libcxx_printer.add_version('std::', 'queue', StdStackOrQueuePrinter)
     libcxx_printer.add_version('std::', 'tuple', StdTuplePrinter)
     libcxx_printer.add_version('std::', 'pair', StdPairPrinter)
@@ -948,31 +953,31 @@ def build_libcxx_dictionary ():
     libcxx_printer.add('std::__debug::forward_list', StdForwardListPrinter)
 
     libcxx_printer.add_container('std::', '__list_iterator',
-                                    StdListIteratorPrinter)
+                                 StdListIteratorPrinter)
     libcxx_printer.add_container('std::', '__list_const_iterator',
-                                    StdListIteratorPrinter)
+                                 StdListIteratorPrinter)
     libcxx_printer.add_version('std::', '__tree_iterator',
-                                    StdRbtreeIteratorPrinter)
+                               StdRbtreeIteratorPrinter)
     libcxx_printer.add_version('std::', '__tree_const_iterator',
-                                    StdRbtreeIteratorPrinter)
+                               StdRbtreeIteratorPrinter)
     libcxx_printer.add_version('std::', '__hash_iterator',
-                                    StdHashtableIteratorPrinter)
+                               StdHashtableIteratorPrinter)
     libcxx_printer.add_version('std::', '__hash_const_iterator',
-                                    StdHashtableIteratorPrinter)
+                               StdHashtableIteratorPrinter)
     libcxx_printer.add_version('std::', '__hash_map_iterator',
-                                    StdUnorderedMapIteratorPrinter)
+                               StdUnorderedMapIteratorPrinter)
     libcxx_printer.add_version('std::', '__hash_map_const_iterator',
-                                    StdUnorderedMapIteratorPrinter)
+                               StdUnorderedMapIteratorPrinter)
     libcxx_printer.add_version('std::', '__map_iterator',
-                                    StdMapIteratorPrinter)
+                               StdMapIteratorPrinter)
     libcxx_printer.add_version('std::', '__map_const_iterator',
-                                    StdMapIteratorPrinter)
+                               StdMapIteratorPrinter)
     libcxx_printer.add_container('std::', '__deque_iterator',
-                                    StdDequeIteratorPrinter)
+                                 StdDequeIteratorPrinter)
     libcxx_printer.add_version('std::', '__wrap_iter',
-                                    StdVectorIteratorPrinter)
+                               StdVectorIteratorPrinter)
     libcxx_printer.add_version('std::', '__bit_iterator',
-                                    StdVectorBoolIteratorPrinter)
+                               StdVectorBoolIteratorPrinter)
 
     # Debug (compiled with -D_GLIBCXX_DEBUG) printer
     # registrations.  The Rb_tree debug iterator when unwrapped
@@ -980,10 +985,10 @@ def build_libcxx_dictionary ():
     # have the __norm namespace. Just use the existing printer
     # registration for that.
     libcxx_printer.add('std::__norm::__list_iterator',
-                            StdListIteratorPrinter)
+                       StdListIteratorPrinter)
     libcxx_printer.add('std::__norm::__list_const_iterator',
-                            StdListIteratorPrinter)
+                       StdListIteratorPrinter)
     libcxx_printer.add('std::__norm::__deque_iterator',
-                            StdDequeIteratorPrinter)
+                       StdDequeIteratorPrinter)
 
-build_libcxx_dictionary ()
+build_libcxx_dictionary()
