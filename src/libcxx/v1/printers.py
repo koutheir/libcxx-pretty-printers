@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import gdb
 import re
+import gdb
 
 # Try to use the new-style pretty-printing if available.
 _use_gdb_pp = True
@@ -110,7 +110,7 @@ class UniquePointerPrinter:
 
     def to_string(self):
         v = self.val['__ptr_']['__first_']
-        return ('%s<%s> = %s => %s' % (str(self.typename), str(v.type.target()), str(v), v.dereference()))
+        return '%s<%s> = %s => %s' % (str(self.typename), str(v.type.target()), str(v), v.dereference())
 
 class StdPairPrinter:
     "Print a std::pair"
@@ -144,9 +144,9 @@ class StdTuplePrinter:
         def __next__(self):
             if self.count >= len(self.fields):
                 raise StopIteration
-            self.field = self.head.cast(self.fields[self.count].type)['value']
+            field = self.head.cast(self.fields[self.count].type)['value']
             self.count += 1
-            return ('[%d]' % (self.count - 1), self.field)
+            return ('[%d]' % (self.count - 1), field)
 
     def __init__(self, typename, val):
         self.typename = typename
