@@ -479,7 +479,7 @@ class StdSetPrinter:
             return len(self.rbiter)
 
         def __next__(self):
-            item = self.rbiter.next()
+            item = self.rbiter.__next__()
             item = item.dereference()['__value_']
             result = (('[%d]' % self.count), item)
             self.count += 1
@@ -507,7 +507,7 @@ class RbtreeIterator:
     def __init__(self, rbtree):
         self.node = rbtree['__begin_node_']
         self.size = rbtree['__pair3_']['__first_']
-        self.node_type = self.node.type
+        self.node_pointer_type = gdb.lookup_type(rbtree.type.strip_typedefs().name + '::__node_pointer')
         self.count = 0
 
     def __iter__(self):
@@ -520,11 +520,11 @@ class RbtreeIterator:
         if self.count == self.size:
             raise StopIteration
 
-        result = self.node
+        node = self.node.cast(self.node_pointer_type)
+        result = node
         self.count += 1
         if self.count < self.size:
             # Compute the next node.
-            node = self.node
             if node.dereference()['__right_']:
                 node = node.dereference()['__right_']
                 while node.dereference()['__left_']:
@@ -536,7 +536,7 @@ class RbtreeIterator:
                     parent_node = parent_node.dereference()['__parent_']
                 node = parent_node
 
-            self.node = node.cast(self.node_type)
+            self.node = node
         return result
 
 class StdRbtreeIteratorPrinter:
@@ -564,7 +564,7 @@ class StdMapPrinter:
             return len(self.rbiter)
 
         def __next__(self):
-            item = self.rbiter.next()
+            item = self.rbiter.__next__()
             item = item.dereference()['__value_']
             result = ('[%d] %s' % (self.count, str(item['__cc']['first'])), item['__cc']['second'])
             self.count += 1
@@ -613,10 +613,8 @@ class HashtableIterator:
             raise StopIteration
         hash_node_type = gdb.lookup_type(
             self.node.dereference().type.name + '::__node_pointer')
-        print("HASH", hash_node_type)
         node = self.node.cast(hash_node_type).dereference()
         self.node = node['__next_']
-        print("HASH", node)
         value = node['__value_']
         try:
             # unordered_map's value is a union of __nc and __cc.
