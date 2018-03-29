@@ -476,6 +476,8 @@ class StdDequePrinter:
             return '%s (size=%d)' % (self.typename, long(self.size))
 
     def children(self):
+        if self.size == 0:
+            return []
         block_map = self.val['__map_']
         size_of_value_type = self.val.type.template_argument(0).sizeof
         block_size = self.val['__block_size']
