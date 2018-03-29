@@ -477,7 +477,12 @@ class StdDequePrinter:
 
     def children(self):
         block_map = self.val['__map_']
-        return self._iterator(self.size, self.val['__block_size'],
+        size_of_value_type = self.val.type.template_argument(0).sizeof
+        block_size = self.val['__block_size']
+        if block_size.is_optimized_out:
+            # Warning, this is pretty flaky
+            block_size = 4096 / size_of_value_type if size_of_value_type < 256 else 16
+        return self._iterator(self.size, block_size,
                               self.val['__start_'], block_map['__begin_'],
                               block_map['__end_'])
 
