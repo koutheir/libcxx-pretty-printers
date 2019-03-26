@@ -125,9 +125,9 @@ class StdStringPrinter:
             type = type.target()
 
         ss = pair_to_tuple(self.val['__r_'])[0]['__s']
-        __short_mask = 0x1
+        __short_mask = int(self.val['__short_mask'])
         if (ss['__size_'] & __short_mask) == 0:
-            len = (ss['__size_'] >> 1)
+            len = ss['__size_'] >> 1 if __short_mask == 1 else ss['__size_']
             ptr = ss['__data_']
         else:
             sl = pair_to_tuple(self.val['__r_'])[0]['__l']
