@@ -62,6 +62,8 @@ try:
 except ImportError:
     pass
 
+def make_type_re(typename):
+  return re.compile('^std::__[a-zA-Z0-9]+::' + typename + '<.*>$')
 
 # Starting with the type ORIG, search for the member type NAME.  This
 # handles searching upward through superclasses.  This is needed to
@@ -84,7 +86,7 @@ def find_type(orig, name):
 
 
 def pair_to_tuple(val):
-    if val.type.name.startswith("std::__1::__compressed_pair"):
+    if make_type_re('__compressed_pair').match(val.type.name):
         t1 = val.type.template_argument(0)
         t2 = val.type.template_argument(1)
 
@@ -833,20 +835,13 @@ class Printer(object):
         super(Printer, self).__init__()
         self.name = name
         self.subprinters = []
-        self.lookup = {}
+        self.lookup = []
         self.enabled = True
-        self.compiled_rx = re.compile('^([a-zA-Z0-9_:]+)<.*>$')
 
     def add(self, name, function):
-        name = 'std::__1::' + name
-        # A small sanity check.
-        # FIXME
-        if not self.compiled_rx.match(name + '<>'):
-            raise ValueError(
-                'libstdc++ programming error: "%s" does not match' % name)
-        printer = RxPrinter(name, function)
+        printer = RxPrinter('std::' + name, function)
         self.subprinters.append(printer)
-        self.lookup[name] = printer
+        self.lookup.append((make_type_re(name), printer))
 
     @staticmethod
     def get_basic_type(type):
@@ -864,15 +859,9 @@ class Printer(object):
         if not typename:
             return None
 
-        # All the types we match are template types, so we can use a
-        # dictionary.
-        match = self.compiled_rx.match(typename)
-        if not match:
-            return None
-
-        basename = match.group(1)
-        if basename in self.lookup:
-            return self.lookup[basename].invoke(val)
+        for (regexp, printer) in self.lookup:
+            if regexp.match(typename):
+                return printer.invoke(val)
 
         # Cannot find a pretty printer.  Return None.
         return None
@@ -998,7 +987,7 @@ def build_libcxx_dictionary():
     printer = Printer("libc++")
 
     # libc++ objects requiring pretty-printing.
-    printer.add('_string', StringPrinter)
+    printer.add('basic_string', StringPrinter)
     printer.add('bitset', BitsetPrinter)
     printer.add('deque', DequePrinter)
     printer.add('list', ListPrinter)
