@@ -389,13 +389,13 @@ class StdDequePrinter:
     def __init__(self, typename, val):
         self.typename = typename
         self.val = val
-        self.size = val['__size_']['__value_']
+        self.size = val['__size_']['__first_']
 
     def to_string(self):
         if self.size == 0:
             return 'empty %s' % self.typename
         else:
-            return '%s (size=%d)' % (self.typename, int(self.size))
+            return '%s (size=%d)' % (self.typename, long(self.size))
 
     def children(self):
         block_map = self.val['__map_']
