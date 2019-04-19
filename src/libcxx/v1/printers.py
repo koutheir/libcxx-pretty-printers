@@ -311,14 +311,14 @@ class StdVectorPrinter:
         start = self.val['__begin_']
         if self.is_bool:
             length = self.val['__size_']
-            capacity = self.val['__cap_alloc_']['__value_'] * self.val['__bits_per_word']
+            capacity = self.val['__cap_alloc_']['__first_'] * self.val['__bits_per_word']
             if length == 0:
                 return 'empty %s<bool> (capacity=%d)' % (self.typename, int(capacity))
             else:
                 return '%s<bool> (length=%d, capacity=%d)' % (self.typename, int(length), int(capacity))
         else:
             finish = self.val['__end_']
-            end = self.val['__end_cap_']['__value_']
+            end = self.val['__end_cap_']['__first_']
             length = finish - start
             capacity = end - start
             if length == 0:
