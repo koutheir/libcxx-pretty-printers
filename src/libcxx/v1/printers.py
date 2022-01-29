@@ -631,29 +631,34 @@ class RbtreeIterator(Iterator):
     def __len__(self):
         return int(self.size)
 
+    def get_tree_min (self, node) :
+        while node.dereference()['__left_'] :
+            node = node.dereference()['__left_']
+            pass
+        return node
+
+    def tree_is_left_child (self, node) :
+        parent_node = node.cast (self.node_pointer_type).dereference()['__parent_']
+        if node == parent_node.dereference() ['__left_'] :
+            return True
+        return False
+
     def __next__(self):
         if self.count == self.size:
             raise StopIteration
 
+        self.count += 1
         node = self.node.cast(self.node_pointer_type)
         result = node
-        self.count += 1
-        if self.count < self.size:
-            # Compute the next node.
-            if node.dereference()['__right_']:
-                node = node.dereference()['__right_']
-                while node.dereference()['__left_']:
-                    node = node.dereference()['__left_']
-            else:
-                parent_node = node.dereference()['__parent_']
-                while node != parent_node.dereference()['__left_']:
-                    node = parent_node
-                    parent_node = parent_node.dereference()['__parent_']
-                node = parent_node
-
-            self.node = node
+        # Compute the next node.
+        if node.dereference()['__right_'] :
+            self.node = self.get_tree_min (node.dereference()['__right_'])
+            return result
+        while node and (not self.tree_is_left_child (node)) :
+            node = node.cast (self.node_pointer_type).dereference()['__parent_']
+            pass
+        self.node = node.cast (self.node_pointer_type).dereference()['__parent_']
         return result
-
 
 class RbtreeIteratorPrinter:
     "Print std::set::iterator"
