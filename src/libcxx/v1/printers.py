@@ -412,8 +412,9 @@ class VectorPrinter:
             start = ptr_to_void_ptr(self.val['__begin_'])
             finish = ptr_to_void_ptr(self.val['__end_'])
             end = ptr_to_void_ptr(pair_to_tuple(self.val['__end_cap_'])[0])
-            length = finish - start
-            capacity = end - start
+            size_of_value_type = self.val.type.template_argument(0).sizeof
+            length = (finish - start) / size_of_value_type
+            capacity = (end - start) / size_of_value_type
             if length == 0:
                 return 'empty %s (capacity=%d)' % (self.typename,
                                                    int(capacity))
