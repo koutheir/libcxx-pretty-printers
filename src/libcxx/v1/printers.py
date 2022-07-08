@@ -248,6 +248,21 @@ class TuplePrinter:
         return 'tuple'
 
 
+class OptionalPrinter:
+    "Print a std::optional"
+
+    def __init__(self, typename, val):
+        self.typename = typename
+        self.val = val
+
+    def to_string(self):
+        if not self.val['__engaged_']:
+            return 'empty %s ' % (str(self.typename))
+        return '%s : %s' % (str(self.typename), self.val['__val_'].to_string())
+
+
+
+
 #    def display_hint(self):
 #        return 'array'
 
@@ -824,8 +839,11 @@ class UnorderedMapPrinter:
         result = []
         count = 0
         for elt in self.hashtableiter:
-            result.append(('[%d] %s' % (count, str(elt['__cc']['first'])),
-                           elt['__cc']['second']))
+            pair_type = str(elt.type.strip_typedefs()).replace('__hash_value_type', 'pair')
+            pair = elt.cast(gdb.lookup_type(pair_type))
+            result.append(('[%d] %s' % (count, str(pair['first'])), pair['second']))
+            #result.append(('[%d] %s' % (count, str(elt['__nc']['first'])),
+            #               elt['__nc']['second']))
             count += 1
         return result
 
@@ -1022,8 +1040,8 @@ def build_libcxx_dictionary():
     printer.add('stack', StackOrQueuePrinter)
     printer.add('unique_ptr', UniquePointerPrinter)
     printer.add('vector', VectorPrinter)  # Includes vector<bool>.
-    printer.add('shared_ptr', SharedPointerPrinter)
-    printer.add('weak_ptr', SharedPointerPrinter)
+    #printer.add('shared_ptr', SharedPointerPrinter)
+    #printer.add('weak_ptr', SharedPointerPrinter)
     printer.add('unordered_map', UnorderedMapPrinter)
     printer.add('unordered_set', UnorderedSetPrinter)
     printer.add('unordered_multimap', UnorderedMapPrinter)
@@ -1045,5 +1063,6 @@ def build_libcxx_dictionary():
     printer.add('__wrap_iter', VectorIteratorPrinter)
     printer.add('__bit_iterator', VectorBoolIteratorPrinter)
 
+    printer.add('optional', OptionalPrinter)
 
 build_libcxx_dictionary()
