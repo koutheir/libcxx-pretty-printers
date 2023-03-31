@@ -1047,8 +1047,8 @@ def build_libcxx_dictionary():
     printer.add('stack', StackOrQueuePrinter)
     printer.add('unique_ptr', UniquePointerPrinter)
     printer.add('vector', VectorPrinter)  # Includes vector<bool>.
-    printer.add('shared_ptr', SharedPointerPrinter)
-    printer.add('weak_ptr', SharedPointerPrinter)
+    #printer.add('shared_ptr', SharedPointerPrinter)
+    #printer.add('weak_ptr', SharedPointerPrinter)
     printer.add('unordered_map', UnorderedMapPrinter)
     printer.add('unordered_set', UnorderedSetPrinter)
     printer.add('unordered_multimap', UnorderedMapPrinter)
