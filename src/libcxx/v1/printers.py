@@ -248,6 +248,19 @@ class TuplePrinter:
         return 'tuple'
 
 
+class OptionalPrinter:
+    "Print a std::optional"
+
+    def __init__(self, typename, val):
+        self.typename = typename
+        self.val = val
+
+    def to_string(self):
+        if not self.val['__engaged_']:
+            return 'empty %s ' % (str(self.typename))
+        return '%s : %s' % (str(self.typename), self.val['__val_'].to_string())
+
+
 #    def display_hint(self):
 #        return 'array'
 
@@ -1045,5 +1058,6 @@ def build_libcxx_dictionary():
     printer.add('__wrap_iter', VectorIteratorPrinter)
     printer.add('__bit_iterator', VectorBoolIteratorPrinter)
 
+    printer.add('optional', OptionalPrinter)
 
 build_libcxx_dictionary()
