@@ -837,8 +837,11 @@ class UnorderedMapPrinter:
         result = []
         count = 0
         for elt in self.hashtableiter:
-            result.append(('[%d] %s' % (count, str(elt['__cc']['first'])),
-                           elt['__cc']['second']))
+            pair_type = str(elt.type.strip_typedefs()).replace('__hash_value_type', 'pair')
+            pair = elt.cast(gdb.lookup_type(pair_type))
+            result.append(('[%d] %s' % (count, str(pair['first'])), pair['second']))
+            #result.append(('[%d] %s' % (count, str(elt['__cc']['first'])),
+            #               elt['__cc']['second']))
             count += 1
         return result
 
