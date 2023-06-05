@@ -163,6 +163,20 @@ class StringPrinter:
     def display_hint(self):
         return 'string'
 
+class SmartPtrIterator(Iterator):
+    "An iterator for smart pointer types with a single 'child' value"
+
+    def __init__(self, val):
+        self.val = val
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.val is None:
+            raise StopIteration
+        self.val, val = None, self.val
+        return ('get()', val)
 
 class SharedPointerPrinter:
     "Print a shared_ptr or weak_ptr"
@@ -170,6 +184,10 @@ class SharedPointerPrinter:
     def __init__(self, typename, val):
         self.typename = typename
         self.val = val
+
+    def children (self):
+        v = self.val['__ptr_']
+        return SmartPtrIterator(v)
 
     def to_string(self):
         state = 'empty'
@@ -196,6 +214,10 @@ class UniquePointerPrinter:
     def __init__(self, typename, val):
         self.typename = typename
         self.val = val
+
+    def children (self):
+        v = pair_to_tuple(self.val['__ptr_'])[0]
+        return SmartPtrIterator(v)
 
     def to_string(self):
         v = pair_to_tuple(self.val['__ptr_'])[0]
